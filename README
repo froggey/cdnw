@@ -1,0 +1,28 @@
+Build cdnw.elf with make, produces a multiboot-compatible kernel.
+
+CPU behaviour:
+AMD & Intel manuals specify that CD/NW are unchanged over INIT, but set on RESET.
+Tests on real hardware (Intel D945GCLF2) confirm this behaviour.
+
+Bochs, QEMU, and VirtualBox all initialize CR0 to 0x60000010 on INIT and RESET.
+
+https://www.virtualbox.org/browser/vbox/trunk/src/VBox/VMM/VMMR3/CPUM.cpp#L1158 [CPUMR3ResetCpu]
+https://www.virtualbox.org/browser/vbox/trunk/src/VBox/VMM/VMMR3/VMM.cpp#L1477 [vmmR3SendInitIpi]
+https://github.com/qemu/qemu/blob/67b9c5d4f37ea373ebf9aad251883886e34bf2e1/target/i386/helper.c#L1033 [do_cpu_init]
+https://github.com/qemu/qemu/blob/eaefea537b476cb853e2edbdc68e969ec777e4bb/target/i386/cpu.c#L3146 [x86_cpu_reset]
+{todo: where does bochs do this?}
+
+
+BIOS behaviour:
+APs on real hardware boot with CD/NW clear, implying that the BIOS has booted them and cleared CD/NW.
+
+SeaBIOS boots all APs, initializes their MSRs and clears CD/NW.
+Bochs' rombios32 boots APs to count them and initialize their MSRs but does not clear CD/NW.
+VirtualBox's BIOS does not appear to boot APs.
+EDK2 (used by VirtualBox in EFI mode) appears to boot APs and clears at least NW. It was not investigated in-depth.
+
+https://github.com/coreboot/seabios/blob/master/src/fw/smp.c#L102 [smp_scan boots APs]
+https://github.com/coreboot/seabios/blob/master/src/romlayout.S#L204 [entry_smp invoke transition32_nmi_off which clears CD/NW]
+https://sourceforge.net/p/bochs/code/HEAD/tree/trunk/bochs/bios/rombios32.c#l574 [smp_probe boots APs]
+https://sourceforge.net/p/bochs/code/HEAD/tree/trunk/bochs/bios/rombios32start.S#l49 [smp_ap_boot_code_start]
+https://www.virtualbox.org/browser/vbox/trunk/src/VBox/Devices/EFI/Firmware/UefiCpuPkg/ResetVector/Vtf0/Ia16/Real16ToFlat32.asm#L16 [TransitionFromReal16To32BitFlat]
